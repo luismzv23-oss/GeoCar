@@ -113,5 +113,15 @@ class WayPulseRobolectricTest {
     assertEquals("highest", map["accuracy"])
     assertEquals("50", map["distance"])
     assertEquals("true", map["buffer"])
+
+    val multiProto =
+      RemoteConfigParser.parseUriString(
+        "waypulse://config?protocol=teltonika&transport=tcp&url=gps.fleet.io:5027&id=358901234567890"
+      )
+    assertTrue(multiProto is RemoteConfigAction.ApplySettings)
+    val protoMap = (multiProto as RemoteConfigAction.ApplySettings).values
+    assertEquals("teltonika", protoMap["protocol"])
+    assertEquals("tcp", protoMap["transport"])
+    assertEquals("gps.fleet.io:5027", protoMap["url"])
   }
 }

@@ -10,7 +10,7 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 sealed class SendResult {
-  data class Success(val statusCode: Int) : SendResult()
+  data class Success(val statusCode: Int, val detail: String? = null) : SendResult()
   data class HttpFailure(val statusCode: Int, val message: String) : SendResult()
   data class NetworkFailure(val error: String) : SendResult()
   data object InvalidUrl : SendResult()

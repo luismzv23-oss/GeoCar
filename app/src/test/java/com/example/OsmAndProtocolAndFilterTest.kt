@@ -24,7 +24,7 @@ class OsmAndProtocolAndFilterTest {
   fun `osmand url uses dot decimal separator regardless of device locale and converts speed to knots`() {
     val previousLocale = Locale.getDefault()
     try {
-      Locale.setDefault(Locale("es", "ES"))
+      Locale.setDefault(Locale.forLanguageTag("es-ES"))
       val pos =
         PositionEntity(
           deviceId = "12345678",

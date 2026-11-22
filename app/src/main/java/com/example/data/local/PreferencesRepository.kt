@@ -13,6 +13,8 @@ import com.example.data.model.AppLanguage
 import com.example.data.model.ThemeMode
 import com.example.data.model.TrackingAccuracy
 import com.example.data.model.TrackingPreferences
+import com.example.data.model.TrackingProtocol
+import com.example.data.model.TransportType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -24,6 +26,8 @@ class PreferencesRepository(private val dataStore: DataStore<Preferences>) {
   private object Keys {
     val DEVICE_ID = stringPreferencesKey("id")
     val SERVER_URL = stringPreferencesKey("url")
+    val PROTOCOL = stringPreferencesKey("protocol")
+    val TRANSPORT = stringPreferencesKey("transport")
     val ACCURACY = stringPreferencesKey("accuracy")
     val DISTANCE = intPreferencesKey("distance")
     val INTERVAL = intPreferencesKey("interval")
@@ -65,6 +69,8 @@ class PreferencesRepository(private val dataStore: DataStore<Preferences>) {
   suspend fun updateSettings(
     deviceId: String,
     serverUrl: String,
+    protocol: TrackingProtocol = TrackingProtocol.OSMAND,
+    transport: TransportType = protocol.defaultTransport,
     accuracy: TrackingAccuracy,
     distance: Int,
     interval: Int,
@@ -76,8 +82,9 @@ class PreferencesRepository(private val dataStore: DataStore<Preferences>) {
     preferPlatformProviders: Boolean,
   ): Boolean {
     val cleanUrl = serverUrl.trim()
-    if (!TrackingPreferences.isValidServerUrl(cleanUrl)) return false
+    if (!TrackingPreferences.isValidServerEndpoint(cleanUrl, protocol)) return false
 
+    val normalizedTransport = protocol.normalizeTransport(transport)
     val cleanDistance = distance.coerceAtLeast(0)
     val cleanInterval = interval.coerceAtLeast(1)
     val cleanAngle = angle.coerceIn(0, 360)
@@ -89,6 +96,8 @@ class PreferencesRepository(private val dataStore: DataStore<Preferences>) {
         prefs[Keys.DEVICE_ID] = trimmedId
       }
       prefs[Keys.SERVER_URL] = cleanUrl
+      prefs[Keys.PROTOCOL] = protocol.key
+      prefs[Keys.TRANSPORT] = normalizedTransport.key
       prefs[Keys.ACCURACY] = accuracy.key
       prefs[Keys.DISTANCE] = cleanDistance
       prefs[Keys.INTERVAL] = cleanInterval
@@ -105,14 +114,35 @@ class PreferencesRepository(private val dataStore: DataStore<Preferences>) {
   suspend fun applyRemoteMap(values: Map<String, String>): Int {
     var applied = 0
     dataStore.edit { prefs ->
+      val currentProtocol =
+        TrackingProtocol.fromKey(prefs[Keys.PROTOCOL]) ?: TrackingProtocol.OSMAND
+      val resolvedProtocol =
+        values["protocol"]?.let { TrackingProtocol.fromKey(it) } ?: currentProtocol
+      if (values["protocol"] != null && TrackingProtocol.fromKey(values["protocol"]) != null) {
+        prefs[Keys.PROTOCOL] = resolvedProtocol.key
+        applied++
+      }
+
+      val requestedTransport = values["transport"]?.let { TransportType.fromKey(it) }
+      if (requestedTransport != null && requestedTransport in resolvedProtocol.supportedTransports) {
+        prefs[Keys.TRANSPORT] = requestedTransport.key
+        applied++
+      } else if (values["protocol"] != null && TrackingProtocol.fromKey(values["protocol"]) != null) {
+        val currentTransport = TransportType.fromKey(prefs[Keys.TRANSPORT])
+        prefs[Keys.TRANSPORT] = resolvedProtocol.normalizeTransport(currentTransport).key
+      }
+
       values["id"]?.trim()?.takeIf { it.isNotEmpty() }?.let {
         prefs[Keys.DEVICE_ID] = it
         applied++
       }
-      values["url"]?.trim()?.takeIf { TrackingPreferences.isValidServerUrl(it) }?.let {
-        prefs[Keys.SERVER_URL] = it
-        applied++
-      }
+      values["url"]
+        ?.trim()
+        ?.takeIf { TrackingPreferences.isValidServerEndpoint(it, resolvedProtocol) }
+        ?.let {
+          prefs[Keys.SERVER_URL] = it
+          applied++
+        }
       values["accuracy"]?.let { TrackingAccuracy.fromKey(it) }?.let {
         prefs[Keys.ACCURACY] = it.key
         applied++
@@ -203,6 +233,8 @@ class PreferencesRepository(private val dataStore: DataStore<Preferences>) {
       prefs.remove(Keys.PASSWORD_HASH)
       prefs[Keys.IS_TRACKING] = false
       prefs[Keys.SERVER_URL] = TrackingPreferences.DEFAULT_SERVER_URL
+      prefs[Keys.PROTOCOL] = TrackingProtocol.OSMAND.key
+      prefs[Keys.TRANSPORT] = TransportType.HTTP.key
       prefs[Keys.ACCURACY] = TrackingAccuracy.MEDIUM.key
       prefs[Keys.DISTANCE] = TrackingPreferences.DEFAULT_DISTANCE_METERS
       prefs[Keys.INTERVAL] = TrackingPreferences.DEFAULT_INTERVAL_SECONDS
@@ -218,9 +250,13 @@ class PreferencesRepository(private val dataStore: DataStore<Preferences>) {
   private fun mapPreferences(prefs: Preferences): TrackingPreferences {
     val rawId = prefs[Keys.DEVICE_ID]
     val deviceId = if (rawId.isNullOrBlank()) TrackingPreferences.DEFAULT_DEVICE_ID_PLACEHOLDER else rawId
+    val protocol = TrackingProtocol.fromKey(prefs[Keys.PROTOCOL]) ?: TrackingProtocol.OSMAND
+    val transport = protocol.normalizeTransport(TransportType.fromKey(prefs[Keys.TRANSPORT]))
     return TrackingPreferences(
       deviceId = deviceId,
       serverUrl = prefs[Keys.SERVER_URL] ?: TrackingPreferences.DEFAULT_SERVER_URL,
+      protocol = protocol,
+      transport = transport,
       accuracy = TrackingAccuracy.fromKey(prefs[Keys.ACCURACY]) ?: TrackingAccuracy.MEDIUM,
       distance = prefs[Keys.DISTANCE] ?: TrackingPreferences.DEFAULT_DISTANCE_METERS,
       interval = prefs[Keys.INTERVAL] ?: TrackingPreferences.DEFAULT_INTERVAL_SECONDS,

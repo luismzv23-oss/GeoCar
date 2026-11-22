@@ -23,11 +23,16 @@
     <!-- Settings Screen -->
     <string name="settings_title">Settings</string>
     <string name="settings_scan_qr">Scan QR Config</string>
-    <string name="setting_device_id">Device Identifier</string>
-    <string name="setting_device_id_hint">8-digit numeric ID (10000000–99999999)</string>
+    <string name="setting_device_id">Device Identifier / IMEI</string>
+    <string name="setting_device_id_hint">8–15 digits (auto zero-padded for GT06/Teltonika/JT808)</string>
+    <string name="setting_protocol">Transmission Protocol</string>
+    <string name="setting_transport">Network Transport</string>
     <string name="setting_server_url">Server URL</string>
     <string name="setting_server_url_hint">http://host:5055 or https://host</string>
     <string name="setting_server_url_error">Enter a valid http:// or https:// URL with a host</string>
+    <string name="setting_server_endpoint">Server Host &amp; Port</string>
+    <string name="setting_server_endpoint_hint">host:%1$d (e.g. demo.traccar.org:%1$d)</string>
+    <string name="setting_server_endpoint_error">Enter a valid host or host:port (1–65535)</string>
     <string name="setting_accuracy">Location Accuracy</string>
     <string name="accuracy_highest">Highest</string>
     <string name="accuracy_high">High</string>
@@ -136,5 +141,5 @@
     <string name="rate_now">Rate App</string>
     <string name="rate_later">Not Now</string>
     <string name="privacy_title">Privacy Policy</string>
-    <string name="privacy_body">WayPulse operates strictly as a client telemetry transmitter to the server URL you configure. Location, battery level, and device identifier are transmitted solely to your specified OsmAnd-compatible server. No location data is sold or shared with third-party advertisers. Passwords are stored locally using salted cryptographic hashing.</string>
+    <string name="privacy_body">WayPulse operates strictly as a client telemetry transmitter to the server endpoint you configure. Location, battery level, and device identifier are transmitted solely to your specified server over OsmAnd, GT06, H02, TK103, Teltonika, or JT808. No location data is sold or shared with third-party advertisers. Passwords are stored locally using salted cryptographic hashing.</string>
 </resources>

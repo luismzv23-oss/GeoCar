@@ -9,6 +9,8 @@ import com.example.data.model.AppLanguage
 import com.example.data.model.ThemeMode
 import com.example.data.model.TrackingAccuracy
 import com.example.data.model.TrackingPreferences
+import com.example.data.model.TrackingProtocol
+import com.example.data.model.TransportType
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -29,6 +31,8 @@ class SettingsViewModel(
   suspend fun saveSettings(
     deviceId: String,
     serverUrl: String,
+    protocol: TrackingProtocol,
+    transport: TransportType,
     accuracy: TrackingAccuracy,
     distance: Int,
     interval: Int,
@@ -43,6 +47,8 @@ class SettingsViewModel(
       preferencesRepository.updateSettings(
         deviceId = deviceId,
         serverUrl = serverUrl,
+        protocol = protocol,
+        transport = transport,
         accuracy = accuracy,
         distance = distance,
         interval = interval,
@@ -54,7 +60,10 @@ class SettingsViewModel(
         preferPlatformProviders = preferPlatformProviders,
       )
     if (ok) {
-      statusLogRepository.log("Settings updated (accuracy=${accuracy.key}, dist=${distance}m)")
+      val resolvedTransport = protocol.normalizeTransport(transport)
+      statusLogRepository.log(
+        "Settings updated (${protocol.displayName} ${resolvedTransport.label}, accuracy=${accuracy.key}, dist=${distance}m)"
+      )
     }
     return ok
   }

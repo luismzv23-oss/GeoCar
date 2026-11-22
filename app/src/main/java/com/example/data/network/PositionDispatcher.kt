@@ -10,6 +10,7 @@ import com.example.data.local.PositionEntity
 import com.example.data.local.PreferencesRepository
 import com.example.data.local.StatusLogRepository
 import com.example.data.model.TrackingPreferences
+import com.example.data.model.TrackingProtocol
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -26,6 +27,7 @@ class PositionDispatcher(
   private val preferencesRepository: PreferencesRepository,
   private val statusLogRepository: StatusLogRepository,
   private val osmAndClient: OsmAndClient,
+  private val socketTelemetryClient: SocketTelemetryClient = SocketTelemetryClient(),
 ) {
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
   private val flushMutex = Mutex()
@@ -74,6 +76,16 @@ class PositionDispatcher(
     return SendResult.Success(200)
   }
 
+  private suspend fun dispatchViaSelectedProtocol(
+    prefs: TrackingPreferences,
+    position: PositionEntity,
+  ): SendResult =
+    if (prefs.protocol == TrackingProtocol.OSMAND) {
+      osmAndClient.sendPosition(prefs.serverUrl, position)
+    } else {
+      socketTelemetryClient.sendPosition(prefs, position)
+    }
+
   private suspend fun sendSingleDirect(
     prefs: TrackingPreferences,
     position: PositionEntity,
@@ -82,11 +94,12 @@ class PositionDispatcher(
       statusLogRepository.log("Direct send skipped: no connectivity", "WARN")
       return SendResult.NetworkFailure("No connectivity")
     }
-    val result = osmAndClient.sendPosition(prefs.serverUrl, position)
+    val result = dispatchViaSelectedProtocol(prefs, position)
     when (result) {
       is SendResult.Success -> {
         val tag = if (position.alarm == "sos") "SOS sent" else "Position sent"
-        statusLogRepository.log("$tag (HTTP ${result.statusCode})")
+        val detail = result.detail ?: "${prefs.protocol.displayName} HTTP ${result.statusCode}"
+        statusLogRepository.log("$tag ($detail)")
       }
       is SendResult.HttpFailure -> {
         statusLogRepository.log(
@@ -98,7 +111,7 @@ class PositionDispatcher(
         statusLogRepository.log("Send failed: ${result.error}", "ERROR")
       }
       SendResult.InvalidUrl -> {
-        statusLogRepository.log("Send failed: invalid server URL", "ERROR")
+        statusLogRepository.log("Send failed: invalid server endpoint", "ERROR")
       }
     }
     return result
@@ -126,12 +139,13 @@ class PositionDispatcher(
         }
 
         val prefs = preferencesRepository.getCurrent()
-        when (val result = osmAndClient.sendPosition(prefs.serverUrl, oldest)) {
+        when (val result = dispatchViaSelectedProtocol(prefs, oldest)) {
           is SendResult.Success -> {
             positionDao.deleteById(oldest.id)
             currentBackoffMs = INITIAL_BACKOFF_MS
             val label = if (oldest.alarm == "sos") "SOS delivered" else "Position delivered"
-            statusLogRepository.log("$label (HTTP ${result.statusCode})")
+            val detail = result.detail ?: "${prefs.protocol.displayName} HTTP ${result.statusCode}"
+            statusLogRepository.log("$label ($detail)")
           }
           is SendResult.HttpFailure -> {
             statusLogRepository.log(
@@ -150,7 +164,7 @@ class PositionDispatcher(
             return
           }
           SendResult.InvalidUrl -> {
-            statusLogRepository.log("Invalid server URL; queue paused", "ERROR")
+            statusLogRepository.log("Invalid server endpoint; queue paused", "ERROR")
             return
           }
         }

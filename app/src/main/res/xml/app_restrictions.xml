@@ -9,6 +9,14 @@
         android:title="@string/setting_server_url"
         android:restrictionType="string" />
     <restriction
+        android:key="protocol"
+        android:title="@string/setting_protocol"
+        android:restrictionType="string" />
+    <restriction
+        android:key="transport"
+        android:title="@string/setting_transport"
+        android:restrictionType="string" />
+    <restriction
         android:key="accuracy"
         android:title="@string/setting_accuracy"
         android:restrictionType="string" />

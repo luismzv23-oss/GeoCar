@@ -672,12 +672,29 @@ private fun DeviceConfigCard(
         }
       }
 
-      Column {
-        Text(
-          text = stringResource(R.string.main_server_url),
-          style = MaterialTheme.typography.labelMedium,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+      Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+          Text(
+            text = stringResource(R.string.main_server_url),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+          Surface(
+            shape = RoundedCornerShape(6.dp),
+            color = MaterialTheme.colorScheme.primaryContainer,
+            modifier = Modifier.testTag("active_protocol_badge"),
+          ) {
+            Text(
+              text = "${prefs.protocol.displayName.uppercase()} • ${prefs.transport.label}",
+              style = MonoCodeStyle.copy(fontSize = MaterialTheme.typography.labelSmall.fontSize),
+              color = MaterialTheme.colorScheme.onPrimaryContainer,
+              modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+            )
+          }
+        }
         Text(
           text = prefs.serverUrl,
           style = MonoCodeStyle,

@@ -9,6 +9,7 @@ import com.example.data.local.wayPulseDataStore
 import com.example.data.network.BatteryMonitor
 import com.example.data.network.OsmAndClient
 import com.example.data.network.PositionDispatcher
+import com.example.data.network.SocketTelemetryClient
 import com.example.remote.MdmRestrictionsManager
 import com.example.service.TrackingController
 
@@ -39,6 +40,10 @@ class AppContainer(context: Context) {
     OsmAndClient()
   }
 
+  val socketTelemetryClient: SocketTelemetryClient by lazy {
+    SocketTelemetryClient()
+  }
+
   val positionDispatcher: PositionDispatcher by lazy {
     PositionDispatcher(
       context = appContext,
@@ -46,6 +51,7 @@ class AppContainer(context: Context) {
       preferencesRepository = preferencesRepository,
       statusLogRepository = statusLogRepository,
       osmAndClient = osmAndClient,
+      socketTelemetryClient = socketTelemetryClient,
     )
   }
 

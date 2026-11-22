@@ -63,6 +63,8 @@ import com.example.data.model.AppLanguage
 import com.example.data.model.ThemeMode
 import com.example.data.model.TrackingAccuracy
 import com.example.data.model.TrackingPreferences
+import com.example.data.model.TrackingProtocol
+import com.example.data.model.TransportType
 import com.example.ui.components.PrivacyPolicyDialog
 import com.example.ui.components.SetPasswordDialog
 import com.example.ui.theme.MonoCodeStyle
@@ -84,6 +86,8 @@ fun SettingsScreen(
 
   var deviceIdText by remember(prefs.deviceId) { mutableStateOf(prefs.deviceId) }
   var serverUrlText by remember(prefs.serverUrl) { mutableStateOf(prefs.serverUrl) }
+  var protocol by remember(prefs.protocol) { mutableStateOf(prefs.protocol) }
+  var transport by remember(prefs.transport) { mutableStateOf(prefs.transport) }
   var urlError by remember { mutableStateOf(false) }
   var accuracy by remember(prefs.accuracy) { mutableStateOf(prefs.accuracy) }
   var distanceText by remember(prefs.distance) { mutableStateOf(prefs.distance.toString()) }
@@ -105,6 +109,8 @@ fun SettingsScreen(
   LaunchedEffect(prefs) {
     deviceIdText = prefs.deviceId
     serverUrlText = prefs.serverUrl
+    protocol = prefs.protocol
+    transport = prefs.transport
     accuracy = prefs.accuracy
     distanceText = prefs.distance.toString()
     intervalText = prefs.interval.toString()
@@ -122,7 +128,7 @@ fun SettingsScreen(
   val savedMsg = stringResource(R.string.settings_saved)
 
   fun commitSettings() {
-    if (!TrackingPreferences.isValidServerUrl(serverUrlText)) {
+    if (!TrackingPreferences.isValidServerEndpoint(serverUrlText, protocol)) {
       urlError = true
       return
     }
@@ -139,6 +145,8 @@ fun SettingsScreen(
         viewModel.saveSettings(
           deviceId = deviceIdText,
           serverUrl = serverUrlText,
+          protocol = protocol,
+          transport = transport,
           accuracy = accuracy,
           distance = dist,
           interval = interval,
@@ -237,19 +245,74 @@ fun SettingsScreen(
               modifier = Modifier.fillMaxWidth().testTag("device_id_input"),
             )
 
+            Text(
+              text = stringResource(R.string.setting_protocol),
+              style = MaterialTheme.typography.titleMedium,
+            )
+            FlowRow(
+              horizontalArrangement = Arrangement.spacedBy(8.dp),
+              verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+              TrackingProtocol.entries.forEach { item ->
+                FilterChip(
+                  selected = protocol == item,
+                  onClick = {
+                    if (protocol != item) {
+                      protocol = item
+                      transport = item.normalizeTransport(transport)
+                      serverUrlText =
+                        TrackingPreferences.rewriteEndpointForProtocol(serverUrlText, item)
+                      urlError = false
+                    }
+                  },
+                  label = { Text("${item.displayName} :${item.defaultPort}") },
+                  modifier = Modifier.testTag("protocol_${item.key}_chip"),
+                )
+              }
+            }
+
+            AnimatedVisibility(visible = protocol.supportedTransports.size > 1) {
+              Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                  text = stringResource(R.string.setting_transport),
+                  style = MaterialTheme.typography.labelLarge,
+                )
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                  protocol.supportedTransports.forEach { t ->
+                    FilterChip(
+                      selected = transport == t,
+                      onClick = { transport = t },
+                      label = { Text(t.label) },
+                      modifier = Modifier.testTag("transport_${t.key}_chip"),
+                    )
+                  }
+                }
+              }
+            }
+
+            val isOsmAnd = protocol == TrackingProtocol.OSMAND
             OutlinedTextField(
               value = serverUrlText,
               onValueChange = {
                 serverUrlText = it
                 urlError = false
               },
-              label = { Text(stringResource(R.string.setting_server_url)) },
+              label = {
+                Text(
+                  if (isOsmAnd) {
+                    stringResource(R.string.setting_server_url)
+                  } else {
+                    stringResource(R.string.setting_server_endpoint)
+                  }
+                )
+              },
               supportingText = {
                 Text(
-                  if (urlError) {
-                    stringResource(R.string.setting_server_url_error)
-                  } else {
-                    stringResource(R.string.setting_server_url_hint)
+                  when {
+                    urlError && isOsmAnd -> stringResource(R.string.setting_server_url_error)
+                    urlError -> stringResource(R.string.setting_server_endpoint_error)
+                    isOsmAnd -> stringResource(R.string.setting_server_url_hint)
+                    else -> stringResource(R.string.setting_server_endpoint_hint, protocol.defaultPort)
                   }
                 )
               },

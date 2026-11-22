@@ -23,11 +23,16 @@
     <!-- Settings Screen -->
     <string name="settings_title">Ajustes</string>
     <string name="settings_scan_qr">Escanear QR</string>
-    <string name="setting_device_id">ID del dispositivo</string>
-    <string name="setting_device_id_hint">Número de 8 dígitos (10000000–99999999)</string>
+    <string name="setting_device_id">ID / IMEI del dispositivo</string>
+    <string name="setting_device_id_hint">8–15 dígitos (relleno automático en GT06/Teltonika/JT808)</string>
+    <string name="setting_protocol">Protocolo de transmisión</string>
+    <string name="setting_transport">Transporte de red</string>
     <string name="setting_server_url">URL del servidor</string>
     <string name="setting_server_url_hint">http://servidor:5055 o https://servidor</string>
     <string name="setting_server_url_error">Ingresa una URL válida con http:// o https:// y host</string>
+    <string name="setting_server_endpoint">Host y puerto del servidor</string>
+    <string name="setting_server_endpoint_hint">host:%1$d (ej. demo.traccar.org:%1$d)</string>
+    <string name="setting_server_endpoint_error">Ingresa un host o host:puerto válido (1–65535)</string>
     <string name="setting_accuracy">Precisión</string>
     <string name="accuracy_highest">Máxima</string>
     <string name="accuracy_high">Alta</string>
@@ -136,5 +141,5 @@
     <string name="rate_now">Calificar</string>
     <string name="rate_later">Ahora no</string>
     <string name="privacy_title">Política de privacidad</string>
-    <string name="privacy_body">WayPulse funciona únicamente como transmisor de telemetría hacia la URL de servidor que configures. La ubicación, el nivel de batería y el identificador del dispositivo se envían exclusivamente al servidor compatible con OsmAnd configurado. No se venden ni comparten datos con anunciantes. La contraseña se almacena localmente mediante hash criptográfico con sal.</string>
+    <string name="privacy_body">WayPulse funciona únicamente como transmisor de telemetría hacia el servidor que configures. La ubicación, el nivel de batería y el identificador del dispositivo se envían exclusivamente al servidor configurado mediante OsmAnd, GT06, H02, TK103, Teltonika o JT808. No se venden ni comparten datos con anunciantes. La contraseña se almacena localmente mediante hash criptográfico con sal.</string>
 </resources>

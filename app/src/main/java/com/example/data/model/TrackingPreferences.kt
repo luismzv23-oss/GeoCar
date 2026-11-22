@@ -6,6 +6,8 @@ import kotlin.random.Random
 data class TrackingPreferences(
   val deviceId: String = DEFAULT_DEVICE_ID_PLACEHOLDER,
   val serverUrl: String = DEFAULT_SERVER_URL,
+  val protocol: TrackingProtocol = TrackingProtocol.OSMAND,
+  val transport: TransportType = TransportType.HTTP,
   val accuracy: TrackingAccuracy = TrackingAccuracy.MEDIUM,
   val distance: Int = DEFAULT_DISTANCE_METERS,
   val interval: Int = DEFAULT_INTERVAL_SECONDS,
@@ -45,6 +47,71 @@ data class TrackingPreferences(
         (scheme == "http" || scheme == "https") && !host.isNullOrBlank()
       } catch (_: Exception) {
         false
+      }
+    }
+
+    fun isValidServerEndpoint(rawEndpoint: String, protocol: TrackingProtocol): Boolean {
+      if (protocol == TrackingProtocol.OSMAND) {
+        return isValidServerUrl(rawEndpoint)
+      }
+      return parseHostAndPort(rawEndpoint, protocol.defaultPort) != null
+    }
+
+    fun parseHostAndPort(rawEndpoint: String, defaultPort: Int): Pair<String, Int>? {
+      val trimmed = rawEndpoint.trim()
+      if (trimmed.isEmpty()) return null
+      return try {
+        val normalized =
+          if (trimmed.contains("://")) {
+            trimmed
+          } else {
+            "tcp://$trimmed"
+          }
+        val uri = URI(normalized)
+        val scheme = uri.scheme?.lowercase()
+        if (scheme != "tcp" && scheme != "udp" && scheme != "http" && scheme != "https") {
+          return null
+        }
+        val host = uri.host?.takeIf { it.isNotBlank() } ?: return null
+        val port = if (uri.port != -1) uri.port else defaultPort
+        if (port !in 1..65535) return null
+        host to port
+      } catch (_: Exception) {
+        null
+      }
+    }
+
+    fun rewriteEndpointForProtocol(
+      currentEndpoint: String,
+      targetProtocol: TrackingProtocol,
+    ): String {
+      val trimmed = currentEndpoint.trim()
+      if (trimmed.isEmpty()) {
+        return if (targetProtocol == TrackingProtocol.OSMAND) {
+          "http://demo.traccar.org:${targetProtocol.defaultPort}"
+        } else {
+          "demo.traccar.org:${targetProtocol.defaultPort}"
+        }
+      }
+
+      val parsedUri =
+        try {
+          URI(if (trimmed.contains("://")) trimmed else "tcp://$trimmed")
+        } catch (_: Exception) {
+          null
+        }
+      val host = parsedUri?.host?.takeIf { it.isNotBlank() } ?: "demo.traccar.org"
+
+      return if (targetProtocol == TrackingProtocol.OSMAND) {
+        val scheme =
+          when (parsedUri?.scheme?.lowercase()) {
+            "https" -> "https"
+            else -> "http"
+          }
+        val path = parsedUri?.rawPath?.takeIf { it.isNotBlank() && it != "/" } ?: ""
+        "$scheme://$host:${targetProtocol.defaultPort}$path"
+      } else {
+        "$host:${targetProtocol.defaultPort}"
       }
     }
 
