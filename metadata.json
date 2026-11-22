@@ -1,0 +1,6 @@
+{
+  "name": "WayPulse",
+  "description": "Native Android GPS tracker compatible with the OsmAnd protocol, featuring a foreground location service, Room offline queue, remote QR/MDM/link configuration, and adaptive Material 3 UI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

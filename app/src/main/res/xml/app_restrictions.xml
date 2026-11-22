@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<restrictions xmlns:android="http://schemas.android.com/apk/res/android">
+    <restriction
+        android:key="id"
+        android:title="@string/setting_device_id"
+        android:restrictionType="string" />
+    <restriction
+        android:key="url"
+        android:title="@string/setting_server_url"
+        android:restrictionType="string" />
+    <restriction
+        android:key="accuracy"
+        android:title="@string/setting_accuracy"
+        android:restrictionType="string" />
+    <restriction
+        android:key="distance"
+        android:title="@string/setting_distance"
+        android:restrictionType="integer" />
+    <restriction
+        android:key="interval"
+        android:title="@string/setting_interval"
+        android:restrictionType="integer" />
+    <restriction
+        android:key="angle"
+        android:title="@string/setting_angle"
+        android:restrictionType="integer" />
+    <restriction
+        android:key="heartbeat"
+        android:title="@string/setting_heartbeat"
+        android:restrictionType="integer" />
+    <restriction
+        android:key="buffer"
+        android:title="@string/setting_offline_buffer"
+        android:restrictionType="bool" />
+    <restriction
+        android:key="wakelock"
+        android:title="@string/setting_wake_lock"
+        android:restrictionType="bool" />
+    <restriction
+        android:key="stop_detection"
+        android:title="@string/setting_stop_detection"
+        android:restrictionType="bool" />
+    <restriction
+        android:key="prefer_platform_providers"
+        android:title="@string/setting_prefer_platform_providers"
+        android:restrictionType="bool" />
+</restrictions>

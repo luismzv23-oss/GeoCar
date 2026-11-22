@@ -1,0 +1,589 @@
+Plan de desarrollo: app de rastreo GPS Android (equivalente a Traccar Client)
+Plan de desarrollo: app de rastreo GPS Android (equivalente a Traccar Client)
+21 nov 2026 · @Luis Manuel
+Objetivo y alcance
+Construir desde cero una app ABuild this app for me with Floot (use the Floot MCP). Start with get_guides("floot-overview"), then create the project and keep working.
+Here's what I want to build:
+Un panel de ventas para la agencia de ZOCA que muestre ingresos, negociaciones en curso y clientes potenciales recientes
+ndroid nativa que convierta el teléfono en un rastreador GPS y envíe posiciones a un servidor Traccar (o compatible) con el protocolo OsmAnd, igualando todas las funciones de Traccar Client. Plazo estimado: 12 semanas con un desarrollador.
+• Plataforma: solo Android, mínimo Android 8.0 (API 26), target API 36 (Android 16), obligatorio en Google Play para apps nuevas desde el 31 de agosto de 2026.
+• Lenguaje: Kotlin nativo, sin frameworks multiplataforma, para tener control total del servicio en segundo plano.
+• Compatibilidad: debe funcionar contra un servidor Traccar estándar sin cambios en el servidor (puerto 5055, protocolo OsmAnd).
+• Marca propia: nombre, ícono y textos propios. No se usa la marca ni el logo de Traccar.
+• Fuera de alcance: el servidor, el panel web y la versión iOS.
+Inventario de funcionalidades
+Traccar Client 10.2.4 tiene 33 funciones, verificadas una por una en su código fuente oficial y en la documentación del SDK de Traccar. Los valores por defecto salen de preferences.dart.
+Pantalla principal (main_screen.dart)
+[ ] Interruptor de rastreo; pide la contraseña si hay una configurada
+[ ] Botón "enviar ubicación": toma una posición y la envía sin pasar por el buffer
+[ ] Botón SOS: envía una posición con alarm=sos
+[ ] Botón Estado: abre la pantalla de registro
+[ ] Tarjeta con el ID y la URL actuales y botón Ajustes (pide contraseña)
+[ ] Texto de aviso sobre el uso de la ubicación (solo Android)
+Ajustes principales (settings_screen.dart)
+[ ] ID del dispositivo: número al azar de 8 dígitos (10000000–99999999) en la primera ejecución; editable, se ignora si queda vacío
+[ ] URL del servidor: por defecto http://demo.traccar.org:5055; solo acepta http o https con host
+[ ] Precisión: Máxima, Alta, Media (por defecto) o Baja
+[ ] Distancia: 75 m por defecto; 0 la desactiva
+[ ] Intervalo: 300 s por defecto; visible solo con precisión Máxima o, en Android, con distancia 0
+[ ] Ángulo: 0 (desactivado) por defecto; visible solo con precisión Máxima
+[ ] Heartbeat: 0 (desactivado) por defecto; valores de 1 a 59 se suben a 60
+Ajustes avanzados (ocultos detrás de un interruptor)
+[ ] Buffer offline: activado por defecto
+[ ] Wake lock: desactivado por defecto, solo Android
+[ ] Detección de parada: activada por defecto
+[ ] Preferir proveedores de la plataforma (LocationManager en vez de Fused): desactivado por defecto, solo Android
+[ ] Contraseña: protege el interruptor, los Ajustes y los accesos rápidos de iniciar y detener
+Registro (status_screen.dart)
+[ ] Lista de eventos con hora, refresco cada 5 s, compartir como logs.txt y borrar
+Accesos rápidos del ícono (quick_actions.dart)
+[ ] Iniciar rastreo (pide contraseña)
+[ ] Detener rastreo (pide contraseña)
+[ ] SOS (sin contraseña); los tres cierran la app al terminar
+Configuración remota (configuration_service.dart)
+[ ] Escaneo de código QR desde la pantalla de Ajustes
+[ ] Enlaces: los de acción start o stop inician o detienen el rastreo; los demás piden confirmación y aplican la configuración. Claves: url, id, accuracy, distance, interval, angle, heartbeat, buffer, wakelock, stop_detection, prefer_platform_providers
+[ ] Configuración administrada por MDM, con las mismas claves y aplicada en vivo
+[ ] Comandos push por Firebase Cloud Messaging: positionSingle, positionPeriodic, positionStop y factoryReset (borra la contraseña). El token se envía al servidor como formulario con id y notificationToken (push_service.dart)
+Servicio en segundo plano (según el SDK)
+[ ] Servicio en primer plano tipo ubicación con notificación persistente
+[ ] Reinicio después de reiniciar el teléfono o actualizar la app, y si el sistema lo mata por memoria
+[ ] Abre una vez la pantalla de exclusión de optimización de batería en el primer inicio
+[ ] Detección de parada con reconocimiento de actividad del sistema; pausa el GPS tras 60 s quieto
+Otros
+[ ] Idiomas y tema claro y oscuro
+[ ] Reporte de errores y analítica con Firebase
+[ ] Pedido para calificar la app
+Mejoras propias (no están en Traccar Client, opcionales): guía de batería por fabricante y guardar la contraseña cifrada, ya que Traccar Client la guarda en texto plano (password_service.dart).
+Arquitectura y stack
+Arquitectura en tres capas con un servicio en primer plano como núcleo: la interfaz solo da órdenes y muestra estado, el servicio genera las posiciones y la capa de datos las guarda y las envía.
+La interfaz puede cerrarse sin cortar el rastreo; solo el cliente OsmAnd se conecta al servidor.
+Necesidad
+Librería
+Interfaz
+Jetpack Compose + Material 3
+Inyección de dependencias
+Hilt
+Ajustes
+DataStore Preferences
+Buffer offline
+Room
+Ubicación
+Google Play Services Location (Fused) y LocationManager
+Detección de parada
+Activity Recognition Transition API (Play Services)
+HTTP
+OkHttp
+Mensajes push y errores
+Firebase Cloud Messaging y Crashlytics
+Escaneo de QR
+CameraX + ML Kit Barcode Scanning
+Concurrencia
+Kotlin Coroutines y Flow
+Tests
+JUnit, MockK, MockWebServer, Compose UI Test
+Las librerías son decisiones propias para Kotlin nativo; Traccar Client usa Flutter con su SDK y paquetes equivalentes (pubspec.yaml).
+Protocolo de envío y modelo de datos
+Cada posición se envía como una petición HTTP con parámetros OsmAnd en la URL. El servidor Traccar lee los parámetros de la URL y, solo si la URL no trae ninguno, del cuerpo como formulario (OsmAndProtocolDecoder.java). Ejemplo:
+http://servidor:5055/?id=12345678&timestamp=1763740800&lat=-34.6037&lon=-58.3816&speed=12.5&bearing=90&altitude=25&accuracy=8&batt=87&charge=false
+Parámetro
+Cómo lo interpreta el servidor
+id o deviceid
+Identificador; si el dispositivo no existe responde HTTP 400
+timestamp
+Segundos o milisegundos Unix, ISO 8601 o yyyy-MM-dd HH:mm:ss; si falta, usa la hora actual
+lat, lon
+Grados decimales; si faltan, usa la última posición conocida
+speed
+Nudos (convertir desde m/s × 1,944)
+bearing o heading
+Rumbo en grados
+altitude
+Metros
+accuracy
+Precisión en metros
+batt
+Nivel de batería, se guarda sin escalar (enviar 0–100)
+charge
+true o false
+alarm
+Solo en SOS: sos; el servidor lo guarda como atributo alarm
+Cualquier otro
+Se guarda como atributo extra de la posición
+Usar punto como separador decimal sin importar el idioma del teléfono (Locale.US).
+Qué no está confirmado. Ni la documentación del SDK ni la página del protocolo dicen si Traccar Client usa GET o POST, ni qué código de éxito espera. Decisión: parámetros en la URL, que el servidor acepta con cualquier método, y tratar cualquier respuesta 2xx como éxito. Validarlo en la fase 5 contra un servidor Traccar real.
+El servidor también acepta un cuerpo JSON (Content-Type: application/json) con otra estructura (device_id, location.coords, battery.level de 0 a 1). No hace falta implementarlo.
+Comportamiento del buffer según el SDK oficial: cola FIFO en SQLite que sobrevive reinicios, reintentos con espera creciente de 5 s a 5 min y espera de conectividad antes de enviar. Ese SDK es Apache 2.0 y está en Maven Central (org.traccar:traccar-client-sdk): sirve como referencia de código.
+Tabla positions (Room)
+Campo
+Tipo
+id
+Long, clave autoincremental
+deviceId
+String
+time
+Long (ms)
+latitude, longitude
+Double
+altitude, speed, course, accuracy
+Double
+battery
+Double
+charging
+Boolean
+mock
+Boolean (ubicación simulada)
+alarm
+String, nulo salvo SOS
+Las posiciones se envían de la más vieja a la más nueva y se borran solo cuando el servidor confirma. Decisión propia, no está en Traccar Client: fijar un tope (por ejemplo 50.000 filas) y descartar las más viejas si se supera.
+Fases de desarrollo
+Ocho fases en secuencia, unas 12 semanas en total. Cada fase cierra solo cuando cumple su criterio de aceptación.
+1.  Base del proyecto (semana 1)
+    ◦ Proyecto Android Studio con Kotlin, Gradle con catálogo de versiones, Hilt, Compose y Room
+    ◦ Repositorio Git, CI que compila y corre tests en cada push, firma de release
+    ◦ Proyecto de Firebase (mensajes push y reporte de errores)
+    ◦ Servidor Traccar de prueba (Docker) para todo el desarrollo
+    ◦ Criterio: la app compila en CI y se instala en un teléfono
+2.  Configuración y almacenamiento (semana 2)
+    ◦ Pantalla de ajustes con los 12 parámetros, valores por defecto del inventario y campos que se muestran según la precisión
+    ◦ Generación del ID de 8 dígitos, validación de URL, contraseña guardada cifrada
+    ◦ Criterio: los valores sobreviven al cierre de la app y los inválidos se rechazan
+3.  Permisos y servicio en primer plano (semanas 3 y 4)
+    ◦ Asistente de permisos: ubicación, ubicación en segundo plano, reconocimiento de actividad y notificaciones
+    ◦ Pantalla de exclusión de batería una vez, en el primer inicio
+    ◦ Foreground service tipo location con notificación e interruptor principal
+    ◦ Reinicio tras encender el teléfono, actualizar la app o morir por memoria
+    ◦ Criterio: el servicio sigue vivo 8 horas con la pantalla apagada
+4.  Motor de ubicación (semanas 5 y 6)
+    ◦ Proveedor Fused y LocationManager detrás de una misma interfaz, con el mapeo de precisión del SDK oficial
+    ◦ Filtros de distancia, intervalo y ángulo; heartbeat; wake lock
+    ◦ Detección de parada con reconocimiento de actividad: pausa el GPS tras 60 s quieto
+    ◦ Criterio: en un recorrido real, los puntos respetan distancia, intervalo y ángulo configurados
+5.  Envío y buffer offline (semana 7)
+    ◦ Cliente HTTP OsmAnd, cola en Room, envío en orden, reintentos de 5 s a 5 min, espera de conectividad
+    ◦ Modo sin buffer: envío directo y descarte
+    ◦ Criterio: tras 1 hora en modo avión, todas las posiciones llegan al servidor y en orden
+6.  Pantallas y controles (semana 8)
+    ◦ Pantalla principal con enviar ubicación y SOS, registro con compartir y borrar, accesos rápidos del ícono
+    ◦ Idiomas, tema oscuro, pedido de calificación
+    ◦ Criterio: cada acción queda reflejada en el registro y en el servidor
+7.  Configuración remota (semana 9)
+    ◦ Escaneo de QR, enlaces de configuración y de inicio o parada, configuración administrada (MDM)
+    ◦ Mensajes push: envío del token al servidor y los 4 comandos
+    ◦ Criterio: un QR generado por el servidor Traccar configura la app, y los comandos enviados desde el servidor se ejecutan
+8.  Pruebas de campo y publicación (semanas 10 a 12)
+    ◦ Pruebas en 4 o más marcas, medición de batería, correcciones
+    ◦ Ficha de Google Play, política de privacidad, declaración y video de ubicación en segundo plano, prueba cerrada de 14 días
+    ◦ Criterio: checklist de lanzamiento completo y app aprobada por Google Play
+Permisos, batería y Google Play
+La ubicación en segundo plano es lo que más revisa Google Play; sin la declaración y el video, la app se rechaza. La lista de permisos coincide con la que declara el SDK oficial de Traccar.
+Permiso
+Para qué
+Cómo se pide
+ACCESS_FINE_LOCATION y ACCESS_COARSE_LOCATION
+Ubicación precisa
+Diálogo del sistema
+ACCESS_BACKGROUND_LOCATION
+Rastrear con la app cerrada
+Desde Android 11, el usuario lo activa en Ajustes; antes, la app muestra una explicación (Android)
+ACTIVITY_RECOGNITION
+Detección de parada
+Diálogo del sistema
+POST_NOTIFICATIONS
+Notificación del servicio, desde Android 13 (Android)
+Diálogo del sistema
+FOREGROUND_SERVICE y FOREGROUND_SERVICE_LOCATION
+Servicio tipo ubicación; el tipo es obligatorio desde Android 14 (Android)
+Solo en el manifiesto
+RECEIVE_BOOT_COMPLETED
+Reiniciar al encender
+Solo en el manifiesto
+WAKE_LOCK
+Wake lock en movimiento
+Solo en el manifiesto
+REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+Pedir la exclusión de batería
+Pantalla del sistema
+INTERNET y ACCESS_NETWORK_STATE
+Envío y detección de red
+Solo en el manifiesto
+CAMERA
+Escanear el QR
+Diálogo del sistema, al abrir el escáner
+Un servicio tipo ubicación no puede iniciarse con la app en segundo plano sin ACCESS_BACKGROUND_LOCATION. Esto importa para los accesos rápidos, los enlaces y los comandos push.
+Requisitos de Google Play (política de ubicación)
+• Formulario de declaración en Play Console (Contenido de la app > Permisos sensibles > Ubicación), declarando una sola función
+• Video de 30 s o menos con la función, el aviso previo y el diálogo de permiso
+• Aviso destacado antes del diálogo de permiso, durante el uso normal, que incluya la palabra "ubicación" y aclare que funciona con la app cerrada
+• Política de privacidad en una URL activa, no PDF, enlazada en la app y en la ficha
+• Target API 36 desde el 31 de agosto de 2026 (requisito)
+• Cuentas personales creadas después del 13 de noviembre de 2023: prueba cerrada con al menos 12 testers durante 14 días seguidos (requisito)
+Batería y fabricantes
+La guía de configuración de Traccar recomienda dejar la app con uso de batería sin restricciones, para evitar huecos grandes, y remite a Don't Kill My App para los pasos de cada marca. Mejora propia opcional: detectar el fabricante y mostrar esos pasos dentro de la app.
+Plan de pruebas
+La prueba que define el éxito es de campo: 8 horas de rastreo real sin huecos en el servidor, en al menos 4 marcas de teléfono.
+Nivel
+Qué se prueba
+Herramienta
+Unitarias
+Filtros de distancia, intervalo y ángulo; máquina de estados; armado de la URL OsmAnd; conversión a nudos
+JUnit, MockK
+Integración
+Cola Room, reintentos, respuestas 200 / 400 / 500 / timeout
+MockWebServer, Room en memoria
+UI
+Validación de ajustes, asistente de permisos, contraseña
+Compose UI Test
+Simulación
+Rutas GPX, modo Doze y App Standby
+Emulador, adb shell dumpsys deviceidle
+Campo
+Recorridos a pie, en auto y detenido; sin señal; reinicio del teléfono
+Teléfonos reales + servidor Traccar
+Batería
+Consumo por hora en cada nivel de precisión
+Battery Historian
+Casos de campo obligatorios
+[ ] Modo avión 1 hora y vuelta: llegan todas las posiciones, en orden
+[ ] Teléfono reiniciado con el rastreo activo: retoma solo
+[ ] Detenido 30 minutos: el GPS se pausa y solo hay heartbeats si están activados
+[ ] Pantalla apagada toda la noche: sin huecos
+[ ] Cambio entre WiFi y datos móviles durante un envío
+[ ] SOS y enviar ubicación con el rastreo apagado y encendido
+[ ] Permiso de ubicación revocado con el servicio corriendo: aviso claro, sin cierre inesperado
+[ ] QR generado por el servidor Traccar: configura la app completa
+[ ] Enlaces de inicio y parada, con y sin contraseña configurada
+[ ] Los 4 comandos push enviados desde el servidor, con la app cerrada
+Riesgos y checklist de lanzamiento
+El mayor riesgo es que el sistema mate el servicio en ciertas marcas; se mitiga probando en teléfonos reales desde la semana 3, no al final.
+Riesgo
+Impacto
+Mitigación
+El fabricante cierra la app en segundo plano
+Huecos de horas en el recorrido
+Foreground service, exclusión de batería, guía por marca, pruebas desde la fase 3
+Google Play rechaza el permiso de segundo plano
+Publicación demorada semanas
+Aviso previo, video y declaración preparados desde la fase 3
+Consumo alto de batería
+Usuarios desinstalan
+Detección de parada, heartbeat, medir en la fase 7
+Teléfonos sin Google Play Services
+Sin ubicación
+Proveedor del sistema como respaldo automático
+Diferencias de formato con el servidor
+Posiciones rechazadas
+Validar contra Traccar real desde la fase 5
+Nuevas restricciones de Android
+Funciones que dejan de andar
+Revisar cambios de cada versión antes de subir el target
+Checklist de lanzamiento
+[ ] Las 33 funciones del inventario marcadas
+[ ] Todos los casos de campo superados
+[ ] Probado en Android 8, 10, 12, 14 y la última versión
+[ ] Build de release firmada, ofuscada con R8 y sin logs de depuración
+[ ] Reporte de errores activo (por ejemplo Firebase Crashlytics)
+[ ] Política de privacidad, Seguridad de los datos y declaración de ubicación aprobadas
+[ ] Prueba cerrada completada y ficha de la tienda en español e inglés
+[ ] Nombre e ícono propios, sin marcas de Traccar
+Fuentes
+Todo lo verificado sale de fuentes oficiales, consultadas el 21 de noviembre de 2026. Lo que no aparece en ellas está marcado en el texto como decisión propia o no confirmado.
+• Código de Traccar Client 10.2.4: repositorio y archivos enlazados en el inventario
+• Documentación del SDK de Traccar y repositorio del SDK
+• Guía de configuración de Traccar Client
+• Protocolo OsmAnd y decodificador del servidor
+• Android: tipos de foreground service, ubicación en segundo plano, permiso de notificaciones
+• Google Play: target API, política de ubicación en segundo plano, requisito de prueba cerrada21 nov 2026 · @Luis Manuel
+Objetivo y alcance
+Construir desde cero una app ABuild this app for me with Floot (use the Floot MCP). Start with get_guides("floot-overview"), then create the project and keep working.
+Here's what I want to build:
+Un panel de ventas para la agencia de ZOCA que muestre ingresos, negociaciones en curso y clientes potenciales recientes
+ndroid nativa que convierta el teléfono en un rastreador GPS y envíe posiciones a un servidor Traccar (o compatible) con el protocolo OsmAnd, igualando todas las funciones de Traccar Client. Plazo estimado: 12 semanas con un desarrollador.
+• Plataforma: solo Android, mínimo Android 8.0 (API 26), target API 36 (Android 16), obligatorio en Google Play para apps nuevas desde el 31 de agosto de 2026.
+• Lenguaje: Kotlin nativo, sin frameworks multiplataforma, para tener control total del servicio en segundo plano.
+• Compatibilidad: debe funcionar contra un servidor Traccar estándar sin cambios en el servidor (puerto 5055, protocolo OsmAnd).
+• Marca propia: nombre, ícono y textos propios. No se usa la marca ni el logo de Traccar.
+• Fuera de alcance: el servidor, el panel web y la versión iOS.
+Inventario de funcionalidades
+Traccar Client 10.2.4 tiene 33 funciones, verificadas una por una en su código fuente oficial y en la documentación del SDK de Traccar. Los valores por defecto salen de preferences.dart.
+Pantalla principal (main_screen.dart)
+[ ] Interruptor de rastreo; pide la contraseña si hay una configurada
+[ ] Botón "enviar ubicación": toma una posición y la envía sin pasar por el buffer
+[ ] Botón SOS: envía una posición con alarm=sos
+[ ] Botón Estado: abre la pantalla de registro
+[ ] Tarjeta con el ID y la URL actuales y botón Ajustes (pide contraseña)
+[ ] Texto de aviso sobre el uso de la ubicación (solo Android)
+Ajustes principales (settings_screen.dart)
+[ ] ID del dispositivo: número al azar de 8 dígitos (10000000–99999999) en la primera ejecución; editable, se ignora si queda vacío
+[ ] URL del servidor: por defecto http://demo.traccar.org:5055; solo acepta http o https con host
+[ ] Precisión: Máxima, Alta, Media (por defecto) o Baja
+[ ] Distancia: 75 m por defecto; 0 la desactiva
+[ ] Intervalo: 300 s por defecto; visible solo con precisión Máxima o, en Android, con distancia 0
+[ ] Ángulo: 0 (desactivado) por defecto; visible solo con precisión Máxima
+[ ] Heartbeat: 0 (desactivado) por defecto; valores de 1 a 59 se suben a 60
+Ajustes avanzados (ocultos detrás de un interruptor)
+[ ] Buffer offline: activado por defecto
+[ ] Wake lock: desactivado por defecto, solo Android
+[ ] Detección de parada: activada por defecto
+[ ] Preferir proveedores de la plataforma (LocationManager en vez de Fused): desactivado por defecto, solo Android
+[ ] Contraseña: protege el interruptor, los Ajustes y los accesos rápidos de iniciar y detener
+Registro (status_screen.dart)
+[ ] Lista de eventos con hora, refresco cada 5 s, compartir como logs.txt y borrar
+Accesos rápidos del ícono (quick_actions.dart)
+[ ] Iniciar rastreo (pide contraseña)
+[ ] Detener rastreo (pide contraseña)
+[ ] SOS (sin contraseña); los tres cierran la app al terminar
+Configuración remota (configuration_service.dart)
+[ ] Escaneo de código QR desde la pantalla de Ajustes
+[ ] Enlaces: los de acción start o stop inician o detienen el rastreo; los demás piden confirmación y aplican la configuración. Claves: url, id, accuracy, distance, interval, angle, heartbeat, buffer, wakelock, stop_detection, prefer_platform_providers
+[ ] Configuración administrada por MDM, con las mismas claves y aplicada en vivo
+[ ] Comandos push por Firebase Cloud Messaging: positionSingle, positionPeriodic, positionStop y factoryReset (borra la contraseña). El token se envía al servidor como formulario con id y notificationToken (push_service.dart)
+Servicio en segundo plano (según el SDK)
+[ ] Servicio en primer plano tipo ubicación con notificación persistente
+[ ] Reinicio después de reiniciar el teléfono o actualizar la app, y si el sistema lo mata por memoria
+[ ] Abre una vez la pantalla de exclusión de optimización de batería en el primer inicio
+[ ] Detección de parada con reconocimiento de actividad del sistema; pausa el GPS tras 60 s quieto
+Otros
+[ ] Idiomas y tema claro y oscuro
+[ ] Reporte de errores y analítica con Firebase
+[ ] Pedido para calificar la app
+Mejoras propias (no están en Traccar Client, opcionales): guía de batería por fabricante y guardar la contraseña cifrada, ya que Traccar Client la guarda en texto plano (password_service.dart).
+Arquitectura y stack
+Arquitectura en tres capas con un servicio en primer plano como núcleo: la interfaz solo da órdenes y muestra estado, el servicio genera las posiciones y la capa de datos las guarda y las envía.
+La interfaz puede cerrarse sin cortar el rastreo; solo el cliente OsmAnd se conecta al servidor.
+Necesidad
+Librería
+Interfaz
+Jetpack Compose + Material 3
+Inyección de dependencias
+Hilt
+Ajustes
+DataStore Preferences
+Buffer offline
+Room
+Ubicación
+Google Play Services Location (Fused) y LocationManager
+Detección de parada
+Activity Recognition Transition API (Play Services)
+HTTP
+OkHttp
+Mensajes push y errores
+Firebase Cloud Messaging y Crashlytics
+Escaneo de QR
+CameraX + ML Kit Barcode Scanning
+Concurrencia
+Kotlin Coroutines y Flow
+Tests
+JUnit, MockK, MockWebServer, Compose UI Test
+Las librerías son decisiones propias para Kotlin nativo; Traccar Client usa Flutter con su SDK y paquetes equivalentes (pubspec.yaml).
+Protocolo de envío y modelo de datos
+Cada posición se envía como una petición HTTP con parámetros OsmAnd en la URL. El servidor Traccar lee los parámetros de la URL y, solo si la URL no trae ninguno, del cuerpo como formulario (OsmAndProtocolDecoder.java). Ejemplo:
+http://servidor:5055/?id=12345678&timestamp=1763740800&lat=-34.6037&lon=-58.3816&speed=12.5&bearing=90&altitude=25&accuracy=8&batt=87&charge=false
+Parámetro
+Cómo lo interpreta el servidor
+id o deviceid
+Identificador; si el dispositivo no existe responde HTTP 400
+timestamp
+Segundos o milisegundos Unix, ISO 8601 o yyyy-MM-dd HH:mm:ss; si falta, usa la hora actual
+lat, lon
+Grados decimales; si faltan, usa la última posición conocida
+speed
+Nudos (convertir desde m/s × 1,944)
+bearing o heading
+Rumbo en grados
+altitude
+Metros
+accuracy
+Precisión en metros
+batt
+Nivel de batería, se guarda sin escalar (enviar 0–100)
+charge
+true o false
+alarm
+Solo en SOS: sos; el servidor lo guarda como atributo alarm
+Cualquier otro
+Se guarda como atributo extra de la posición
+Usar punto como separador decimal sin importar el idioma del teléfono (Locale.US).
+Qué no está confirmado. Ni la documentación del SDK ni la página del protocolo dicen si Traccar Client usa GET o POST, ni qué código de éxito espera. Decisión: parámetros en la URL, que el servidor acepta con cualquier método, y tratar cualquier respuesta 2xx como éxito. Validarlo en la fase 5 contra un servidor Traccar real.
+El servidor también acepta un cuerpo JSON (Content-Type: application/json) con otra estructura (device_id, location.coords, battery.level de 0 a 1). No hace falta implementarlo.
+Comportamiento del buffer según el SDK oficial: cola FIFO en SQLite que sobrevive reinicios, reintentos con espera creciente de 5 s a 5 min y espera de conectividad antes de enviar. Ese SDK es Apache 2.0 y está en Maven Central (org.traccar:traccar-client-sdk): sirve como referencia de código.
+Tabla positions (Room)
+Campo
+Tipo
+id
+Long, clave autoincremental
+deviceId
+String
+time
+Long (ms)
+latitude, longitude
+Double
+altitude, speed, course, accuracy
+Double
+battery
+Double
+charging
+Boolean
+mock
+Boolean (ubicación simulada)
+alarm
+String, nulo salvo SOS
+Las posiciones se envían de la más vieja a la más nueva y se borran solo cuando el servidor confirma. Decisión propia, no está en Traccar Client: fijar un tope (por ejemplo 50.000 filas) y descartar las más viejas si se supera.
+Fases de desarrollo
+Ocho fases en secuencia, unas 12 semanas en total. Cada fase cierra solo cuando cumple su criterio de aceptación.
+1.  Base del proyecto (semana 1)
+    ◦ Proyecto Android Studio con Kotlin, Gradle con catálogo de versiones, Hilt, Compose y Room
+    ◦ Repositorio Git, CI que compila y corre tests en cada push, firma de release
+    ◦ Proyecto de Firebase (mensajes push y reporte de errores)
+    ◦ Servidor Traccar de prueba (Docker) para todo el desarrollo
+    ◦ Criterio: la app compila en CI y se instala en un teléfono
+2.  Configuración y almacenamiento (semana 2)
+    ◦ Pantalla de ajustes con los 12 parámetros, valores por defecto del inventario y campos que se muestran según la precisión
+    ◦ Generación del ID de 8 dígitos, validación de URL, contraseña guardada cifrada
+    ◦ Criterio: los valores sobreviven al cierre de la app y los inválidos se rechazan
+3.  Permisos y servicio en primer plano (semanas 3 y 4)
+    ◦ Asistente de permisos: ubicación, ubicación en segundo plano, reconocimiento de actividad y notificaciones
+    ◦ Pantalla de exclusión de batería una vez, en el primer inicio
+    ◦ Foreground service tipo location con notificación e interruptor principal
+    ◦ Reinicio tras encender el teléfono, actualizar la app o morir por memoria
+    ◦ Criterio: el servicio sigue vivo 8 horas con la pantalla apagada
+4.  Motor de ubicación (semanas 5 y 6)
+    ◦ Proveedor Fused y LocationManager detrás de una misma interfaz, con el mapeo de precisión del SDK oficial
+    ◦ Filtros de distancia, intervalo y ángulo; heartbeat; wake lock
+    ◦ Detección de parada con reconocimiento de actividad: pausa el GPS tras 60 s quieto
+    ◦ Criterio: en un recorrido real, los puntos respetan distancia, intervalo y ángulo configurados
+5.  Envío y buffer offline (semana 7)
+    ◦ Cliente HTTP OsmAnd, cola en Room, envío en orden, reintentos de 5 s a 5 min, espera de conectividad
+    ◦ Modo sin buffer: envío directo y descarte
+    ◦ Criterio: tras 1 hora en modo avión, todas las posiciones llegan al servidor y en orden
+6.  Pantallas y controles (semana 8)
+    ◦ Pantalla principal con enviar ubicación y SOS, registro con compartir y borrar, accesos rápidos del ícono
+    ◦ Idiomas, tema oscuro, pedido de calificación
+    ◦ Criterio: cada acción queda reflejada en el registro y en el servidor
+7.  Configuración remota (semana 9)
+    ◦ Escaneo de QR, enlaces de configuración y de inicio o parada, configuración administrada (MDM)
+    ◦ Mensajes push: envío del token al servidor y los 4 comandos
+    ◦ Criterio: un QR generado por el servidor Traccar configura la app, y los comandos enviados desde el servidor se ejecutan
+8.  Pruebas de campo y publicación (semanas 10 a 12)
+    ◦ Pruebas en 4 o más marcas, medición de batería, correcciones
+    ◦ Ficha de Google Play, política de privacidad, declaración y video de ubicación en segundo plano, prueba cerrada de 14 días
+    ◦ Criterio: checklist de lanzamiento completo y app aprobada por Google Play
+Permisos, batería y Google Play
+La ubicación en segundo plano es lo que más revisa Google Play; sin la declaración y el video, la app se rechaza. La lista de permisos coincide con la que declara el SDK oficial de Traccar.
+Permiso
+Para qué
+Cómo se pide
+ACCESS_FINE_LOCATION y ACCESS_COARSE_LOCATION
+Ubicación precisa
+Diálogo del sistema
+ACCESS_BACKGROUND_LOCATION
+Rastrear con la app cerrada
+Desde Android 11, el usuario lo activa en Ajustes; antes, la app muestra una explicación (Android)
+ACTIVITY_RECOGNITION
+Detección de parada
+Diálogo del sistema
+POST_NOTIFICATIONS
+Notificación del servicio, desde Android 13 (Android)
+Diálogo del sistema
+FOREGROUND_SERVICE y FOREGROUND_SERVICE_LOCATION
+Servicio tipo ubicación; el tipo es obligatorio desde Android 14 (Android)
+Solo en el manifiesto
+RECEIVE_BOOT_COMPLETED
+Reiniciar al encender
+Solo en el manifiesto
+WAKE_LOCK
+Wake lock en movimiento
+Solo en el manifiesto
+REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+Pedir la exclusión de batería
+Pantalla del sistema
+INTERNET y ACCESS_NETWORK_STATE
+Envío y detección de red
+Solo en el manifiesto
+CAMERA
+Escanear el QR
+Diálogo del sistema, al abrir el escáner
+Un servicio tipo ubicación no puede iniciarse con la app en segundo plano sin ACCESS_BACKGROUND_LOCATION. Esto importa para los accesos rápidos, los enlaces y los comandos push.
+Requisitos de Google Play (política de ubicación)
+• Formulario de declaración en Play Console (Contenido de la app > Permisos sensibles > Ubicación), declarando una sola función
+• Video de 30 s o menos con la función, el aviso previo y el diálogo de permiso
+• Aviso destacado antes del diálogo de permiso, durante el uso normal, que incluya la palabra "ubicación" y aclare que funciona con la app cerrada
+• Política de privacidad en una URL activa, no PDF, enlazada en la app y en la ficha
+• Target API 36 desde el 31 de agosto de 2026 (requisito)
+• Cuentas personales creadas después del 13 de noviembre de 2023: prueba cerrada con al menos 12 testers durante 14 días seguidos (requisito)
+Batería y fabricantes
+La guía de configuración de Traccar recomienda dejar la app con uso de batería sin restricciones, para evitar huecos grandes, y remite a Don't Kill My App para los pasos de cada marca. Mejora propia opcional: detectar el fabricante y mostrar esos pasos dentro de la app.
+Plan de pruebas
+La prueba que define el éxito es de campo: 8 horas de rastreo real sin huecos en el servidor, en al menos 4 marcas de teléfono.
+Nivel
+Qué se prueba
+Herramienta
+Unitarias
+Filtros de distancia, intervalo y ángulo; máquina de estados; armado de la URL OsmAnd; conversión a nudos
+JUnit, MockK
+Integración
+Cola Room, reintentos, respuestas 200 / 400 / 500 / timeout
+MockWebServer, Room en memoria
+UI
+Validación de ajustes, asistente de permisos, contraseña
+Compose UI Test
+Simulación
+Rutas GPX, modo Doze y App Standby
+Emulador, adb shell dumpsys deviceidle
+Campo
+Recorridos a pie, en auto y detenido; sin señal; reinicio del teléfono
+Teléfonos reales + servidor Traccar
+Batería
+Consumo por hora en cada nivel de precisión
+Battery Historian
+Casos de campo obligatorios
+[ ] Modo avión 1 hora y vuelta: llegan todas las posiciones, en orden
+[ ] Teléfono reiniciado con el rastreo activo: retoma solo
+[ ] Detenido 30 minutos: el GPS se pausa y solo hay heartbeats si están activados
+[ ] Pantalla apagada toda la noche: sin huecos
+[ ] Cambio entre WiFi y datos móviles durante un envío
+[ ] SOS y enviar ubicación con el rastreo apagado y encendido
+[ ] Permiso de ubicación revocado con el servicio corriendo: aviso claro, sin cierre inesperado
+[ ] QR generado por el servidor Traccar: configura la app completa
+[ ] Enlaces de inicio y parada, con y sin contraseña configurada
+[ ] Los 4 comandos push enviados desde el servidor, con la app cerrada
+Riesgos y checklist de lanzamiento
+El mayor riesgo es que el sistema mate el servicio en ciertas marcas; se mitiga probando en teléfonos reales desde la semana 3, no al final.
+Riesgo
+Impacto
+Mitigación
+El fabricante cierra la app en segundo plano
+Huecos de horas en el recorrido
+Foreground service, exclusión de batería, guía por marca, pruebas desde la fase 3
+Google Play rechaza el permiso de segundo plano
+Publicación demorada semanas
+Aviso previo, video y declaración preparados desde la fase 3
+Consumo alto de batería
+Usuarios desinstalan
+Detección de parada, heartbeat, medir en la fase 7
+Teléfonos sin Google Play Services
+Sin ubicación
+Proveedor del sistema como respaldo automático
+Diferencias de formato con el servidor
+Posiciones rechazadas
+Validar contra Traccar real desde la fase 5
+Nuevas restricciones de Android
+Funciones que dejan de andar
+Revisar cambios de cada versión antes de subir el target
+Checklist de lanzamiento
+[ ] Las 33 funciones del inventario marcadas
+[ ] Todos los casos de campo superados
+[ ] Probado en Android 8, 10, 12, 14 y la última versión
+[ ] Build de release firmada, ofuscada con R8 y sin logs de depuración
+[ ] Reporte de errores activo (por ejemplo Firebase Crashlytics)
+[ ] Política de privacidad, Seguridad de los datos y declaración de ubicación aprobadas
+[ ] Prueba cerrada completada y ficha de la tienda en español e inglés
+[ ] Nombre e ícono propios, sin marcas de Traccar
+Fuentes
+Todo lo verificado sale de fuentes oficiales, consultadas el 21 de noviembre de 2026. Lo que no aparece en ellas está marcado en el texto como decisión propia o no confirmado.
+• Código de Traccar Client 10.2.4: repositorio y archivos enlazados en el inventario
+• Documentación del SDK de Traccar y repositorio del SDK
+• Guía de configuración de Traccar Client
+• Protocolo OsmAnd y decodificador del servidor
+• Android: tipos de foreground service, ubicación en segundo plano, permiso de notificaciones
+• Google Play: target API, política de ubicación en segundo plano, requisito de prueba cerrada

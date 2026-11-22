@@ -1,0 +1,140 @@
+<resources>
+    <string name="app_name">WayPulse</string>
+
+    <!-- Main Screen -->
+    <string name="main_tracking_label">Location Tracking</string>
+    <string name="main_tracking_active">Active — Transmitting GPS telemetry</string>
+    <string name="main_tracking_stationary">Paused — Stationary detected</string>
+    <string name="main_tracking_inactive">Stopped — Tap to start tracking</string>
+    <string name="main_send_location">Send Location</string>
+    <string name="main_send_location_desc">Send a single position immediately bypassing buffer</string>
+    <string name="main_sos">SOS</string>
+    <string name="main_sos_desc">Send emergency alarm=sos position</string>
+    <string name="main_status">Status</string>
+    <string name="main_settings">Settings</string>
+    <string name="main_device_id">Device ID</string>
+    <string name="main_server_url">Server URL</string>
+    <string name="main_queued_count">%1$d queued</string>
+    <string name="main_location_disclosure_title">Background Location Notice</string>
+    <string name="main_location_disclosure_body">WayPulse collects location data to enable continuous GPS tracking and transmit coordinates to your configured server even when the app is closed or not in use.</string>
+    <string name="main_permissions_needed">Permissions &amp; Battery Setup</string>
+    <string name="main_permissions_needed_desc">Grant background location and battery exclusion for uninterrupted tracking.</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_scan_qr">Scan QR Config</string>
+    <string name="setting_device_id">Device Identifier</string>
+    <string name="setting_device_id_hint">8-digit numeric ID (10000000–99999999)</string>
+    <string name="setting_server_url">Server URL</string>
+    <string name="setting_server_url_hint">http://host:5055 or https://host</string>
+    <string name="setting_server_url_error">Enter a valid http:// or https:// URL with a host</string>
+    <string name="setting_accuracy">Location Accuracy</string>
+    <string name="accuracy_highest">Highest</string>
+    <string name="accuracy_high">High</string>
+    <string name="accuracy_medium">Medium</string>
+    <string name="accuracy_low">Low</string>
+    <string name="setting_distance">Distance (m)</string>
+    <string name="setting_distance_hint">0 disables distance filter</string>
+    <string name="setting_interval">Interval (s)</string>
+    <string name="setting_angle">Angle (deg)</string>
+    <string name="setting_heartbeat">Heartbeat (s)</string>
+    <string name="setting_heartbeat_hint">0 disables; 1–59 auto-adjusts to 60s</string>
+    <string name="settings_advanced_toggle">Advanced Settings</string>
+    <string name="setting_offline_buffer">Offline Buffer</string>
+    <string name="setting_offline_buffer_desc">Store positions in local queue when offline</string>
+    <string name="setting_wake_lock">Wake Lock</string>
+    <string name="setting_wake_lock_desc">Keep CPU active while moving</string>
+    <string name="setting_stop_detection">Stop Detection</string>
+    <string name="setting_stop_detection_desc">Pause GPS after 60s stationary via activity recognition</string>
+    <string name="setting_prefer_platform_providers">Prefer Platform Providers</string>
+    <string name="setting_prefer_platform_providers_desc">Use Android LocationManager instead of Fused</string>
+    <string name="setting_password">Protection Password</string>
+    <string name="setting_password_set">Protected (stored encrypted)</string>
+    <string name="setting_password_unset">Not configured</string>
+    <string name="setting_password_set_btn">Set / Change</string>
+    <string name="setting_password_clear_btn">Clear</string>
+    <string name="settings_appearance_section">Appearance &amp; Language</string>
+    <string name="setting_theme">Theme</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="setting_language">Language</string>
+    <string name="lang_system">System</string>
+    <string name="lang_spanish">Español</string>
+    <string name="lang_english">English</string>
+    <string name="settings_tools_section">Tools &amp; Compliance</string>
+    <string name="setting_battery_guide">Manufacturer Battery Guide</string>
+    <string name="setting_permissions_wizard">Permissions Assistant</string>
+    <string name="setting_privacy_policy">Privacy Policy</string>
+    <string name="setting_save">Save Changes</string>
+    <string name="settings_saved">Settings saved</string>
+
+    <!-- Status / Logs Screen -->
+    <string name="status_title">Status &amp; Event Log</string>
+    <string name="status_share">Share logs.txt</string>
+    <string name="status_clear">Clear</string>
+    <string name="status_empty">No tracking events recorded yet.</string>
+    <string name="status_refresh_hint">Auto-refreshes every 5s</string>
+
+    <!-- Shortcuts -->
+    <string name="shortcut_start_short">Start</string>
+    <string name="shortcut_start_long">Start Tracking</string>
+    <string name="shortcut_stop_short">Stop</string>
+    <string name="shortcut_stop_long">Stop Tracking</string>
+    <string name="shortcut_sos_short">SOS</string>
+    <string name="shortcut_sos_long">Send SOS Alert</string>
+
+    <!-- Dialogs & Prompts -->
+    <string name="password_prompt_title">Enter Password</string>
+    <string name="password_prompt_hint">Password</string>
+    <string name="password_prompt_error">Incorrect password</string>
+    <string name="password_new_title">Set Protection Password</string>
+    <string name="password_confirm_hint">Confirm password</string>
+    <string name="password_mismatch">Passwords do not match</string>
+    <string name="confirm">Confirm</string>
+    <string name="cancel">Cancel</string>
+    <string name="apply">Apply</string>
+    <string name="close">Close</string>
+    <string name="remote_config_title">Apply Remote Configuration?</string>
+    <string name="remote_config_body">The following parameters were received and will update your device settings:</string>
+    <string name="disclosure_dialog_title">Location Access Disclosure</string>
+    <string name="disclosure_dialog_body">WayPulse accesses your device location in the background so it can record and transmit GPS positions to your configured telemetry server even when the app is closed or the screen is off. You can stop tracking at any time.</string>
+    <string name="disclosure_accept">Continue</string>
+
+    <!-- QR Scanner -->
+    <string name="qr_title">Scan Configuration QR</string>
+    <string name="qr_hint">Point camera at a configuration QR code</string>
+    <string name="qr_camera_required">Camera permission is required to scan QR codes.</string>
+    <string name="qr_grant_camera">Grant Camera Permission</string>
+    <string name="qr_invalid">QR code does not contain valid configuration parameters.</string>
+
+    <!-- Battery Guide & Permissions -->
+    <string name="battery_guide_title">Battery Optimization Guide</string>
+    <string name="battery_guide_device">Detected Manufacturer: %1$s (%2$s)</string>
+    <string name="battery_guide_request_exclusion">Request Unrestricted Battery</string>
+    <string name="battery_guide_open_app_info">Open App Battery Settings</string>
+    <string name="permissions_title">Permissions Assistant</string>
+    <string name="perm_fine_location">Precise Location</string>
+    <string name="perm_background_location">Background Location (All the time)</string>
+    <string name="perm_activity_recognition">Activity Recognition (Stop detection)</string>
+    <string name="perm_notifications">Service Notifications</string>
+    <string name="perm_battery_exclusion">Ignore Battery Optimizations</string>
+    <string name="perm_granted">Granted</string>
+    <string name="perm_grant">Grant</string>
+
+    <!-- Foreground Service Notification -->
+    <string name="notif_channel_name">GPS Tracking Service</string>
+    <string name="notif_channel_desc">Persistent notification while WayPulse is actively tracking location</string>
+    <string name="notif_title">WayPulse Tracking Active</string>
+    <string name="notif_text_active">ID %1$s • Moving • %2$d queued</string>
+    <string name="notif_text_stationary">ID %1$s • Stationary (GPS paused) • %2$d queued</string>
+    <string name="notif_action_stop">Stop</string>
+
+    <!-- Rate App & Privacy -->
+    <string name="rate_title">Enjoying WayPulse?</string>
+    <string name="rate_body">If reliable background GPS tracking helps your workflow, consider leaving a rating on Google Play.</string>
+    <string name="rate_now">Rate App</string>
+    <string name="rate_later">Not Now</string>
+    <string name="privacy_title">Privacy Policy</string>
+    <string name="privacy_body">WayPulse operates strictly as a client telemetry transmitter to the server URL you configure. Location, battery level, and device identifier are transmitted solely to your specified OsmAnd-compatible server. No location data is sold or shared with third-party advertisers. Passwords are stored locally using salted cryptographic hashing.</string>
+</resources>
